@@ -92,10 +92,10 @@ export class Window extends Component {
     }
 
     randomTest = () => { //'https://cors-anywhere.herokuapp.com/'+
-        fetch('localhost:8080/view?path=/')
-            .then( (result)=>{
-                console.log(result)
-            })
+
+        fetch('http://localhost:8080/view?path=/')
+            .then( (result) => result.json())
+            .then( (result) => console.log(result))
             .catch( (e) =>{
                 console.log(e)
             })

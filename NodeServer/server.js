@@ -2,24 +2,26 @@ const http = require('http');
 const url = require('url');
 const fs = require('fs')
 const resolve = require('path').resolve
+const express = require('express')
+const app = express()
 
-http.createServer((request, response) => {
-    //localhost:8080/view?path=/
+
+app.use(function(req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
+});
+
+app.get('/view*',(request,response) => {
     const urlParts = url.parse(request.url, true);
-    response.writeHead(200, { 'Content-Type': 'text/HTML; charset=utf-8'});
-    response.setHeader('X-Frame-Options', 'ALLOWALL');
-    response.setHeader('Access-Control-Allow-Origin', '*');
-    response.setHeader('Access-Control-Allow-Methods', 'POST, GET');
-    response.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    if (urlParts.pathname === '/view') { //View catalog
-        const path = resolve(urlParts.query.path);
+    const path = resolve(urlParts.query.path);
 
-        fs.readdir(path,(err,files) => {
-            if(err){
-                response.write(`{"path": ${path}, "content": "error"}`)
-            }
-            else{
-                let iter = 0
+    fs.readdir(path,(err,files) => {
+        if(err){
+            response.write(`{"path": ${path}, "content": "error"}`)
+        }
+        else{
+               let iter = 0
                 response.write(`{"path": "${path}","content": [`)
                 files.forEach(
                     (file) => {
@@ -47,66 +49,60 @@ http.createServer((request, response) => {
                 )
             }
         })
-    }
-    else if(urlParts.pathname === '/show'){ //Show file
-        //localhost:8080/show?path=/etc/passwd
-        const path = resolve(urlParts.query.path);
-        fs.readFile(path,(err,content)=>{
-            if (err){
-                response.write(`{"path": "${path}","content": "error"}`)
-            }
-            else{
-                response.write(JSON.stringify({path: path,content: content.toString().split('\n')}))
-            }
-        })
-        response.end()
-    }
-    else if(urlParts.pathname === '/copy'){ //Copy file or catalog
-        //localhost:8080/copy?path=/etc/passwd|/bin/file
-        const path = resolve(urlParts.query.path);
+})
 
+app.get('/show*',(request,response) => {
+    const urlParts = url.parse(request.url, true);
+    const path = resolve(urlParts.query.path);
+
+    fs.readFile(path,(err,content)=>{
+        if (err){
+            response.send(`{"path": "${path}","content": "error"}`)
+        }
+        else{
+            response.send(JSON.stringify({path: path,content: content.toString().split('\n')}))
+        }
+     })
+})
+
+app.get('/copy*',(request,response) => {
+    const urlParts = url.parse(request.url, true);
+    const path = resolve(urlParts.query.path);
         const acc = path.split('|')
         fs.lstat(acc[0],(err,cont) => {
             if(err){
-                response.write(`{"path": "${path}","content": "${err.toString()}"}`)
-                response.end()
+                response.send(`{"path": "${path}","content": "${err.toString()}"}`)
             }
            else if(cont.isDirectory()){
-                response.write(`{"path": "${path}","content": "directory"}`)
-                response.end()
+                response.send(`{"path": "${path}","content": "directory"}`)
            }
            else if(cont.isFile()){
                fs.copyFile(acc[0],acc[1],(err)=>{
                    if(err){
-                       response.write(`{"path": "${path}","content": "${err.toString()}"}`)
-                       response.end()
+                       response.send(`{"path": "${path}","content": "${err.toString()}"}`)
                    }
                    else{
-                       response.write(`{"path":"${path}","content":"success"}`)
-                       response.end()
+                       response.send(`{"path":"${path}","content":"success"}`)
                    }
                })
            }
            else{ //error and neither file nor directory
-               response.write(`{"path": "${path}","content": "error"}`)
-               response.end()
+               response.send(`{"path": "${path}","content": "error"}`)
            }
         })
-    }
-    else if(urlParts.pathname === '/remove'){ //remove file or catalog
-        //localhost:8080/remove?path=/etc/passwd
+})
 
-        const path = resolve(urlParts.query.path);
+app.get('/remove*',(request,response) => {
+    const urlParts = url.parse(request.url, true);
+    const path = resolve(urlParts.query.path);
         fs.lstat(path,(err,cont) => {
             if(err){
-                response.write(`{"path": "${path}","content": "error"}`)
-                response.end()
+                response.send(`{"path": "${path}","content": "error"}`)
             }
             else if(cont.isDirectory()){
                 fs.rmdir(path,(err)=>{
                     if(err){
-                        response.write(`{"path": "${path}","content": "error"}`) //#TODO error while directory is not empty
-                        response.end()
+                        response.send(`{"path": "${path}","content": "error"}`) //#TODO error while directory is not empty
                     }
                     else{
                         response.write(`{"path":"${path}","content":"success"}`)
@@ -117,40 +113,37 @@ http.createServer((request, response) => {
             else if(cont.isFile()){
                 fs.unlink(path,(err)=>{
                     if(err){
-                        response.write(`{"path": "${path}","content": "${err.toString()}"}`)
-                        response.end()
+                        response.send(`{"path": "${path}","content": "${err.toString()}"}`)
                     }
                     else{
-                        response.write(`{"path":"${path}","content":"success"}`)
-                        response.end()
+                        response.send(`{"path":"${path}","content":"success"}`)
                     }
                 })
             }
             else{ //error and neither file nor directory
-                response.write(`{"path": "${path}","content": "${err.toString()}"}`)
-                response.end()
+                response.send(`{"path": "${path}","content": "${err.toString()}"}`)
             }
         })
-    }
-    else if(urlParts.pathname === '/rename'){ //rename
-        //localhost:8080/rename?path=/etc/passwd|/etc/pass
-        const path = resolve(urlParts.query.path);
-        const path_splitted = path.split('|')
-        fs.rename(path_splitted[0],path_splitted[1],(e)=>{
-            if(e){
-                response.write(`{"path": "${path}","content": "${err.toString()}"}`)
-                response.end()
+})
+
+app.get('/rename',(request,response) => {
+    const urlParts = url.parse(request.url, true);
+    const path = resolve(urlParts.query.path);
+    const path_splitted = path.split('|')
+    fs.rename(path_splitted[0],path_splitted[1],(e)=>{
+         if(e){
+             response.send(`{"path": "${path}","content": "${err.toString()}"}`)
             }
             else{
-                response.write(`{"path":"${path}","content":"success"}`)
-                response.end()
+                response.send(`{"path":"${path}","content":"success"}`)
             }
         })
-    }
-    else {
-        /*error 404?*/
-        response.write(`{"path": "${path}","content": "Error, no such command"}`)
+    })
 
-        response.end();
-    }
-}).listen(8080);
+const server = app.listen(8080,() => {
+    const host = server.address().address
+    const port = server.address().port
+
+    console.log("Listening at http://%s:%s", host, port)
+})
+
