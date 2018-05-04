@@ -6,7 +6,7 @@ const resolve = require('path').resolve
 http.createServer((request, response) => {
     //localhost:8080/view?path=/
     const urlParts = url.parse(request.url, true);
-    response.writeHead(200, { 'Content-Type': 'text/HTML; charset=utf-8' });
+    response.writeHead(200, { 'Content-Type': 'text/HTML; charset=utf-8',"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept"});
     if (urlParts.pathname === '/view') { //View catalog
         const path = resolve(urlParts.query.path);
 

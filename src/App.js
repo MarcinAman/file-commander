@@ -2,76 +2,80 @@ import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
 
+/*https://stackoverflow.com/questions/43262121/trying-to-use-fetch-and-pass-in-mode-no-cors*/
 
 /*because i would like to have a common render method to allow easy modifications */
 
-class Element extends Component {
-    render(){
-        return `<tr class = 'fixed-table-row'>
-            <td><input type="checkbox"></td>
-            <td>${this.renderPrivileges()}</td>
-            <td>${this.renderName}</td>
-        </tr>`
+export class Element extends Component {
+    renderType = () => {
+        return this.state.type.toString()
     }
-}
 
-class File extends Element{
-    constructor(jsonElement){
-        super()
+    renderSize = () => {
+        return this.state.size.toString()
+    }
 
-        this.state = {
-            name: jsonElement.name,
-            privileges: jsonElement.privileges
-        }
+    renderName = () => {
+        return this.state.name.toString()
     }
 
     setState = (jsonElement) => {
         this.state.name = jsonElement.name
-        this.state.privileges = jsonElement.privileges
+        this.state.size = jsonElement.size
     }
 
-    renderPrivileges = () => {
-        return this.state.privileges.toString()
-    }
-
-    renderName = () => {
-        return this.state.name.toString()
+    render(){
+        return `<tr class = 'fixed-table-row'>
+            <td><input type="checkbox"></td>
+            <td>${this.renderType()}</td>
+            <td>${this.renderName()}</td>
+            <td>${this.renderSize()}</td>
+        </tr>`
     }
 }
 
-class Directory extends Element {
+export class File extends Element{
+    constructor(jsonElement) {
+        super()
+        this.state = {
+            name: jsonElement.name,
+            size: jsonElement.size,
+            type: 'File'
+        }
+    }
+}
+
+export class Directory extends Element {
     constructor(jsonElement){
         super()
         this.state = {
             name: jsonElement.name,
-            privileges: jsonElement.privileges
+            size: jsonElement.size,
+            type: 'Directory'
         }
-    }
-
-    renderPrivileges = () => {
-        return this.state.privileges.toString()
-    }
-
-    renderName = () => {
-        return this.state.name.toString()
     }
 }
 
-class Window extends Component {
-    constructor(type){
+export class Window extends Component {
+    constructor(type,baseURL){
         super()
-        this.currentURL = ''
+        this.currentURL = baseURL
         this.type = type
+        this.content = {
+            path: '',
+            content: []
+        }
+
     }
 
     parseContent(jsonResponse){
         return jsonResponse.reduce(
             (prev,element)=>{
-                if(element.type==='directory'){
-                    return prev.push(Directory(element))
+                if(element['directory']){
+                    return prev.push(new Directory(element))
                 }
                 else{
-                    return prev.push(File(element))
+                    return prev.push(new File(element))
                 }
             }
         ,[])
@@ -80,9 +84,19 @@ class Window extends Component {
     async getJsonFromAPI(apiURL){
         return fetch(apiURL)
             .then( (result) => {
-                return result.json()
+                return result
             })
             .catch((e) => {
+                console.log(e)
+            })
+    }
+
+    randomTest = () => { //'https://cors-anywhere.herokuapp.com/'+
+        fetch('localhost:8080/view?path=/')
+            .then( (result)=>{
+                console.log(result)
+            })
+            .catch( (e) =>{
                 console.log(e)
             })
     }
@@ -99,36 +113,40 @@ class Window extends Component {
     }
 
     render() {
+        this.randomTest()
+        setTimeout(2000)
         return ''
+        return this.getJsonFromAPI('localhost:8080/view?path=/')
+            .then(
+                (json) => {
+                    return {
+                        path: json['path'],
+                        content: this.parseContent(json)
+                    }
+                }
+            )
+            .then( (e)=>{
+                e['content'].reduce( (acc,element) => {
+                        return `${acc}+${element.render()}`
+                    },''
+                )
+            })
     }
 }
 
 class App extends Component {
+    init = () => {
+        this.state = {
+            leftWindow: new Window('left','localhost:8080/view?path=/')
+        }
+    }
+
   render() {
-    return (
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <h1 className="App-title">Welcome to React</h1>
-        </header>
-        <p className="App-intro">
-          To get started, edit <code>src/App.js</code> and save to reload.
-        </p>
-      </div>
-    );
+        this.init()
+        return (
+            this.state.leftWindow.render()
+        );
   }
 }
 
 export default App;
-
-/*
-JSON format:
-{
-    path: <path>,
-    content: [
-                {type: directory, name: SomeFolder,privileges: SomePrivileges},
-                {type:file, name: SomeFile, privileges:SomePrivileges} Mby size as an extra information?
-              ]
-}
-
- */
