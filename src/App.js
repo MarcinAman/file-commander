@@ -1,10 +1,5 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
 import './App.css';
-
-/*https://stackoverflow.com/questions/43262121/trying-to-use-fetch-and-pass-in-mode-no-cors*/
-
-/*because i would like to have a common render method to allow easy modifications */
 
 export class Element extends Component {
     renderType = () => {
@@ -19,132 +14,123 @@ export class Element extends Component {
         return this.state.name.toString()
     }
 
-    setState = (jsonElement) => {
-        this.state.name = jsonElement.name
-        this.state.size = jsonElement.size
+    changeReadOnly(){
+        //#TODO
+        // this.setState({readOnly:false})
     }
 
     render(){
-        return `<tr class = 'fixed-table-row'>
-            <td><input type="checkbox"></td>
-            <td>${this.renderType()}</td>
-            <td>${this.renderName()}</td>
-            <td>${this.renderSize()}</td>
-        </tr>`
+        return (
+            <tr className = 'fixed-table-row'>
+            <td><input type="checkbox"/></td>
+                <td><input type='text' value={this.renderName()} readOnly={this.state.readOnly} onDoubleClick={this.changeReadOnly}/></td>
+            <td>{this.renderSize()}</td>
+            <td>{this.renderType()}</td>
+
+            </tr>
+        )
     }
 }
 
 export class File extends Element{
-    constructor(jsonElement) {
+    constructor(props) {
         super()
         this.state = {
-            name: jsonElement.name,
-            size: jsonElement.size,
-            type: 'File'
+            name: props.content.name,
+            size: props.content.size,
+            type: 'File',
+            readOnly: true
         }
     }
 }
 
 export class Directory extends Element {
-    constructor(jsonElement){
+    constructor(props){
         super()
         this.state = {
-            name: jsonElement.name,
-            size: jsonElement.size,
-            type: 'Directory'
+            name: props.content.name,
+            size: props.content.size,
+            type: 'Directory',
+            readOnly: true
         }
     }
 }
 
-export class Window extends Component {
-    constructor(type,baseURL){
-        super()
-        this.currentURL = baseURL
-        this.type = type
-        this.content = {
-            path: '',
-            content: []
-        }
-
+class Window extends Component {
+    constructor(props){
+        super(props)
+        this.state = {
+            isLoading: true,
+            url: props.url
+        };
     }
 
     parseContent(jsonResponse){
-        return jsonResponse.reduce(
-            (prev,element)=>{
+        return jsonResponse.content.map(
+            (element)=>{
                 if(element['directory']){
-                    return prev.push(new Directory(element))
+                    return <Directory content={element}/>
                 }
                 else{
-                    return prev.push(new File(element))
+                    return <File content={element}/>
                 }
-            }
-        ,[])
-    }
-
-    async getJsonFromAPI(apiURL){
-        return fetch(apiURL)
-            .then( (result) => {
-                return result
-            })
-            .catch((e) => {
-                console.log(e)
             })
     }
 
-    randomTest = () => { //'https://cors-anywhere.herokuapp.com/'+
 
-        fetch('http://localhost:8080/view?path=/')
-            .then( (result) => result.json())
-            .then( (result) => console.log(result))
-            .catch( (e) =>{
-                console.log(e)
-            })
-    }
-
-    setState = () => {
-        this.getJsonFromAPI(this.currentURL).then(
-            (json) => {
-                this.content = {
-                    path: json['path'],
+    componentDidMount(){
+        return fetch(this.state.url)
+            .then( (e) =>{
+                return e.json()
+            } )
+            .then( (json) => {
+                this.setState({
+                    isLoading: false,
+                    path: json.path,
                     content: this.parseContent(json)
-                }
+                })
             }
-        )
+            )
+            .catch( (err) => {
+                console.log(err)
+            })
     }
 
-    render() {
-        this.randomTest()
-        setTimeout(2000)
-        return ''
-        return this.getJsonFromAPI('localhost:8080/view?path=/')
-            .then(
-                (json) => {
-                    return {
-                        path: json['path'],
-                        content: this.parseContent(json)
-                    }
-                }
+    remove(){
+
+    }
+
+    render(){
+        if(this.state.content){
+            return(
+                <div>
+                    <div className = 'fixed-table-header'>{this.state.path}</div>
+                    <div className = 'fixed-table-content'>{this.state.content}</div>
+                    <button onClick={this.remove}>Remove</button>
+                    <button onClick={this.remove}>Remove</button>
+                    <button onClick={this.remove}>Remove</button>
+                </div>
             )
-            .then( (e)=>{
-                e['content'].reduce( (acc,element) => {
-                        return `${acc}+${element.render()}`
-                    },''
-                )
-            })
+        }
+        return (
+            <div className = 'content-loader'>
+            </div>
+        )
     }
 }
 
 class App extends Component {
-    init = () => {
-        this.state = {
-            leftWindow: new Window('left','localhost:8080/view?path=/')
-        }
+
+    componentDidMount(){
+        console.log('parent')
     }
 
-  render() {
-        this.init()
+    render() {
         return (
-            this.state.leftWindow.render()
+            <div className = 'windows'>
+                <div className = 'window-left'><Window url="http://localhost:8080/view?path=/home/woolfy"/></div>
+                <div className = 'window-right'><Window url="http://localhost:8080/view?path=/home/woolfy"/></div>
+            </div>
         );
   }
 }
