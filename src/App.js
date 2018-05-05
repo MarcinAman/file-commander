@@ -2,6 +2,10 @@ import React, { Component } from 'react';
 import './App.css';
 
 export class Element extends Component {
+    constructor(){
+        super()
+        this.changeChecked = this.changeChecked.bind(this)
+    }
     renderType = () => {
         return this.state.type.toString()
     }
@@ -14,16 +18,21 @@ export class Element extends Component {
         return this.state.name.toString()
     }
 
-    changeReadOnly(){
-        //#TODO
-        // this.setState({readOnly:false})
+    changeChecked(e){
+        if(this.state.checked){
+            this.setState({checked:false})
+        }
+        else{
+            this.setState({checked:true})
+        }
+        this.state.callbackFunction(this)
     }
 
     render(){
         return (
             <tr className = 'fixed-table-row'>
-            <td><input type="checkbox"/></td>
-                <td><input type='text' value={this.renderName()} readOnly={this.state.readOnly} onDoubleClick={this.changeReadOnly}/></td>
+            <td><input type="checkbox" onChange={this.changeChecked}/></td>
+                <td>{this.renderName()}</td>
             <td>{this.renderSize()}</td>
             <td>{this.renderType()}</td>
 
@@ -39,8 +48,11 @@ export class File extends Element{
             name: props.content.name,
             size: props.content.size,
             type: 'File',
-            readOnly: true
+            checked: false,
+            callbackFunction: props.callback
         }
+
+        this.changeChecked = this.changeChecked.bind(this)
     }
 }
 
@@ -51,7 +63,8 @@ export class Directory extends Element {
             name: props.content.name,
             size: props.content.size,
             type: 'Directory',
-            readOnly: true
+            checked: false,
+            callbackFunction: props.callback
         }
     }
 }
@@ -61,20 +74,37 @@ class Window extends Component {
         super(props)
         this.state = {
             isLoading: true,
-            url: props.url
+            url: props.url,
+            base_url: props.base_url,
+            checked: [],
+            path: props.path
         };
+        this.remove = this.remove.bind(this)
+        this.rename = this.rename.bind(this)
+        this.isChecked = this.isChecked.bind(this)
     }
 
     parseContent(jsonResponse){
         return jsonResponse.content.map(
             (element)=>{
                 if(element['directory']){
-                    return <Directory content={element}/>
+                    return <Directory content={element} callback={this.isChecked}/>
                 }
                 else{
-                    return <File content={element}/>
+                    return <File content={element} callback={this.isChecked}/>
                 }
             })
+    }
+
+    isChecked(element){
+        if(!element.state.checked){
+            this.state.checked.push(element)
+        }
+        else{
+            this.state.checked = this.state.checked.filter((e)=>
+                e!==element
+            )
+        }
     }
 
 
@@ -96,7 +126,26 @@ class Window extends Component {
             })
     }
 
+    async fetchRequests(url){
+        const response = await fetch(url)
+        return true
+    }
+
+    componentDidUpdate(){
+        return this.componentDidMount()
+    }
+
     remove(){
+        this.state.checked.map(
+            (e) => {
+                return this.fetchRequests(this.state.base_url+'remove?path='+this.state.path+'/'+e.state.name)
+            }
+        )
+
+        this.setState(this.state)
+    }
+
+    rename(){
 
     }
 
@@ -107,8 +156,7 @@ class Window extends Component {
                     <div className = 'fixed-table-header'>{this.state.path}</div>
                     <div className = 'fixed-table-content'>{this.state.content}</div>
                     <button onClick={this.remove}>Remove</button>
-                    <button onClick={this.remove}>Remove</button>
-                    <button onClick={this.remove}>Remove</button>
+                    <button onClick={this.rename}>Rename</button>
                 </div>
             )
         }
@@ -128,8 +176,12 @@ class App extends Component {
     render() {
         return (
             <div className = 'windows'>
-                <div className = 'window-left'><Window url="http://localhost:8080/view?path=/home/woolfy"/></div>
-                <div className = 'window-right'><Window url="http://localhost:8080/view?path=/home/woolfy"/></div>
+                <div className = 'window-left'><Window url="http://localhost:8080/view?path=/home/woolfy"
+                                                       base_url="http://localhost:8080/"
+                                                       path="/home/woolfy"/></div>
+                <div className = 'window-right'><Window url="http://localhost:8080/view?path=/home/woolfy"
+                                                        base_url="http://localhost:8080/"
+                                                        path="/home/woolfy"/></div>
             </div>
         );
   }
