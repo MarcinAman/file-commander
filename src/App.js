@@ -82,6 +82,8 @@ class Window extends Component {
         this.remove = this.remove.bind(this)
         this.rename = this.rename.bind(this)
         this.isChecked = this.isChecked.bind(this)
+        this.changeName = this.changeName.bind(this)
+        this.updateStateWithModalName = this.updateStateWithModalName.bind(this)
     }
 
     parseContent(jsonResponse){
@@ -145,11 +147,46 @@ class Window extends Component {
         this.setState(this.state)
     }
 
-    rename(){
+    updateStateWithModalName(event,e){
+        this.state.modals.map(
+            (ele) => {
+                if(e.name === ele.name){
+                    ele.state.name = event.target.value //?????
+                }
+                return ele
+            }
+        )
+    }
 
+    changeName(event,e){
+
+        this.state.modals.filter(
+            (a) => a!==e
+        )
+
+        const result = this.fetchRequests(this.state.base_url+'rename?path='+this.state.path+'/'+e.state.name+'|'+this.state.path+'/'+event.target.value)
+
+        this.setState(this.state)
+    }
+
+    rename(){
+        //#TODO a modal with new name
+
+        this.setState({
+                renderModal: true,
+                modals: this.state.checked.map(
+                    (e) => <tr><input type='textarea' placeholder={e.state.name} onChange={(a) => this.updateStateWithModalName(a,e)}/>
+                        <button onClick={(a) => this.changeName(a,e)}>Accept</button></tr>
+            )
+        })
     }
 
     render(){
+        if(this.state.renderModal){
+            return(<div className='modal-mail'>
+                {this.state.modals}
+            </div>)
+        }
         if(this.state.content){
             return(
                 <div>
