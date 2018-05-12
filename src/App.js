@@ -18,20 +18,20 @@ export class Element extends Component {
         return this.state.name.toString()
     }
 
-    changeChecked(e){
+    changeChecked(e,state){
         if(this.state.checked){
             this.setState({checked:false})
         }
         else{
             this.setState({checked:true})
         }
-        this.state.callbackFunction(this)
+        this.state.callbackFunction(this,state)
     }
 
     render(){
         return (
             <tr className = 'fixed-table-row'>
-            <td><input type="checkbox" onChange={this.changeChecked}/></td>
+            <td><input type="checkbox" onChange={(a) => this.changeChecked(a,this.state)}/></td>
                 <td>{this.renderName()}</td>
             <td>{this.renderSize()}</td>
             <td>{this.renderType()}</td>
@@ -52,7 +52,6 @@ export class File extends Element{
             callbackFunction: props.callback
         }
 
-        this.changeChecked = this.changeChecked.bind(this)
     }
 }
 
@@ -98,93 +97,124 @@ class Window extends Component {
             })
     }
 
-    isChecked(element){
+    isChecked(element,state){
         if(!element.state.checked){
-            this.state.checked.push(element)
+            this.state.checked.push({
+                element: element,
+                state: state
+            })
         }
         else{
-            this.state.checked = this.state.checked.filter((e)=>
-                e!==element
+            this.state.checked = this.state.checked.filter(
+                (e)=> e.element !==element
             )
         }
     }
 
-
-    componentDidMount(){
+    getData(){
         return fetch(this.state.url)
             .then( (e) =>{
                 return e.json()
             } )
             .then( (json) => {
-                this.setState({
-                    isLoading: false,
-                    path: json.path,
-                    content: this.parseContent(json)
-                })
-            }
+                    this.setState({
+                        isLoading: false,
+                        path: json.path,
+                        content: this.parseContent(json)
+                    })
+                }
             )
             .catch( (err) => {
                 console.log(err)
             })
     }
 
-    async fetchRequests(url){
-        const response = await fetch(url)
-        return true
+    componentDidMount(){
+        return this.getData()
     }
 
-    componentDidUpdate(){
-        return this.componentDidMount()
+    async fetchRequests(url){
+        const response = await fetch(url)
+        return response
     }
 
     remove(){
         this.state.checked.map(
             (e) => {
-                return this.fetchRequests(this.state.base_url+'remove?path='+this.state.path+'/'+e.state.name)
+                console.log(this.fetchRequests(this.state.base_url+'remove?path='+this.state.path+'/'+e.state.name))
+                return e
             }
         )
 
-        this.setState(this.state)
+        this.setState({checked:[]})
+        this.componentDidMount()
     }
 
     updateStateWithModalName(event,e){
-        this.state.modals.map(
-            (ele) => {
-                if(e.name === ele.name){
-                    ele.state.name = event.target.value //?????
+        this.state.changedNames.map(
+            (a) => {
+                if(a.elementState.state.name === e.name){
+                    a.currentName = event.target.value
                 }
-                return ele
+                return a
             }
         )
     }
 
-    changeName(event,e){
+    changeName(event,e,element){
 
-        this.state.modals.filter(
-            (a) => a!==e
+        const newName = this.state.changedNames.find(
+            (a) => {
+                return e.state.name === a.elementState.state.name
+            }
         )
 
-        const result = this.fetchRequests(this.state.base_url+'rename?path='+this.state.path+'/'+e.state.name+'|'+this.state.path+'/'+event.target.value)
+        const result = this.fetchRequests(this.state.base_url+'rename?path='+this.state.path+'/'+e.state.name+'|'+this.state.path+'/'+newName.currentName)
 
-        this.setState(this.state)
+        if(this.state.checked.length===1){
+            this.setState({renderChecked:false})
+        }
+
+        this.setState({
+            checked: this.state.checked.filter(
+                (a) => e.state.name !== a.key
+            ),
+            changedNames: this.state.changedNames.filter(
+                (a) => e.state.name !== a.elementState.name
+            )
+        })
+
+        this.componentDidMount()
+    }
+
+    wrapElement(e){
+        return <tr key={e.state.name}><input type='textarea' placeholder={e.state.name} onChange={(a) => this.updateStateWithModalName(a,e.state)}/>
+            <button onClick={(a) => this.changeName(a,e,this)}>Accept</button></tr>
     }
 
     rename(){
         //#TODO a modal with new name
 
         this.setState({
-                renderModal: true,
-                modals: this.state.checked.map(
-                    (e) => <tr><input type='textarea' placeholder={e.state.name} onChange={(a) => this.updateStateWithModalName(a,e)}/>
-                        <button onClick={(a) => this.changeName(a,e)}>Accept</button></tr>
-            )
+                renderChecked: true,
+                changedNames: this.state.checked.map(
+                    (e) => {
+                        return {
+                            currentName: e.name,
+                            elementState: e
+                        }
+                    }
+                ),
+                checked: this.state.checked.map(
+                    (e) => this.wrapElement(e)
+                )
         })
     }
 
     render(){
-        if(this.state.renderModal){
+        if(this.state.renderChecked){
             return(<div className='modal-mail'>
-                {this.state.modals}
+                {this.state.checked}
             </div>)
         }
         if(this.state.content){
