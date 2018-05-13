@@ -80,7 +80,8 @@ class Window extends Component {
             checked: [],
             path: props.path,
             returnChecked: props.checked,
-            changeCurrentPath: props.changePath
+            changeCurrentPath: props.changePath,
+            refreshComponent: props.refreshComp
         };
         this.remove = this.remove.bind(this)
         this.rename = this.rename.bind(this)
@@ -88,6 +89,14 @@ class Window extends Component {
         this.changeName = this.changeName.bind(this)
         this.updateStateWithModalName = this.updateStateWithModalName.bind(this)
         this.changePath = this.changePath.bind(this)
+    }
+
+    componentWillReceiveProps(next){
+        if(next.refreshComp!==this.state.refreshComponent){
+            console.log("this")
+            this.setState({refreshComponent: next.refreshComp})
+            this.componentDidMount()
+        }
     }
 
     changePath(event,e){
@@ -119,7 +128,6 @@ class Window extends Component {
             )
         }
     }
-
 
     parseContent(jsonResponse){
         return jsonResponse.content.map(
@@ -168,6 +176,7 @@ class Window extends Component {
     }
 
     componentDidMount(){
+        this.setState({content:[]})
         return this.getData()
     }
 
@@ -285,7 +294,8 @@ class App extends Component {
         this.state = {
             base_url:'http://localhost:8080/',
             leftPath: "/home/woolfy",
-            rightPath: "/home/woolfy"
+            rightPath: "/home/woolfy",
+            refreshComponent: false
         }
 
         this.copy = this.copy.bind(this)
@@ -321,26 +331,34 @@ class App extends Component {
     }
 
     copy(event){
-        //#TODO doesnt copy from right to left + update
-        let iterable = []
-        let from = ''
-        let to = ''
+        //#TODO update
+       if(typeof this.state.checkedLeft !== 'undefined'){
+           this.fetchRequests(this.state.base_url+"copy?path="+this.state.leftPath+"/"+
+               this.state.checkedLeft[0].state.name+"|"+this.state.rightPath+"/"+this.state.checkedLeft[0].state.name)
+               .then(
+                   () => {
+                       this.setState({
+                           checkedLeft:undefined,
+                           checkedRight: undefined,
+                           refreshComponent: !this.state.refreshComponent
+                       })
+                   }
+               )
+       }
+       else{
+           this.fetchRequests(this.state.base_url+"copy?path="+this.state.rightPath+"/"+
+               this.state.checkedRight[0].state.name+"|"+this.state.leftPath+"/"+this.state.checkedRight[0].state.name)
+               .then(
+                   () => {
+                       this.setState({
+                           checkedLeft:undefined,
+                           checkedRight: undefined,
+                           refreshComponent: !this.state.refreshComponent
+                       })
 
-        if(this.state.checkedLeft!==undefined){
-            iterable = this.state.checkedLeft
-            from = this.state.leftPath
-            to =this.state.rightPath
-        }
-        else{
-            to = this.state.leftPath
-            from = this.state.rightPath
-            iterable = this.state.checkedRight
-        }
-
-        iterable.forEach(
-            (e) => {
-                this.fetchRequests(this.state.base_url+"copy?path="+from+"/"+e.state.name+"|"+to+"/"+e.state.name)
-            }) //magnificent error handling
+                   }
+               )
+       }
     }
 
     render() {
@@ -350,12 +368,14 @@ class App extends Component {
                                                        base_url={this.state.base_url}
                                                        path={this.state.leftPath}
                                                         checked={(e) => this.addChecked('left',e)}
-                                                        changePath={(a)=>this.changeCurrentPath('left',a)}/></div>
+                                                        changePath={(a)=>this.changeCurrentPath('left',a)}
+                                                        refreshComp={this.state.refreshComponent}/></div>
                 <div className = 'window-right'><Window url={this.state.base_url + "view?path="+this.state.rightPath}
                                                         base_url={this.state.base_url}
-                                                        path={this.state.leftPath}
+                                                        path={this.state.rightPath}
                                                         checked={(e)=>this.addChecked('right',e)}
-                                                        changePath={(a)=>this.changeCurrentPath('left',a)}/></div>
+                                                        changePath={(a)=>this.changeCurrentPath('right',a)}
+                                                        refreshComp={this.state.refreshComponent}/></div>
                 <button onClick={this.copy}>Copy</button>
             </div>
         );
