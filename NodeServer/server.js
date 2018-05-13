@@ -15,7 +15,6 @@ app.use(function(req, res, next) {
 app.get('/view*',(request,response) => {
     const urlParts = url.parse(request.url, true);
     const path = resolve(urlParts.query.path);
-
     fs.readdir(path,(err,files) => {
         if(err){
             response.write(`{"path": ${path}, "content": "error"}`)
@@ -23,16 +22,22 @@ app.get('/view*',(request,response) => {
         else{
                let iter = 0
                 response.write(`{"path": "${path}","content": [`)
+                if(files.length===0){
+                   response.write(']}')
+                    response.end()
+                }
                 files.forEach(
                     (file) => {
                         fs.lstat(path,
                             (err,stat)=>{
+                                const isFile = file.endsWith('.txt')|stat.isFile()
+                                const isDirectory = !isFile //Sory, had to do so. isFile and isDirectory for some reason doesnt work correctly
                                 response.write(
                                     `{
                                     "name": "${file}",
                                     "size": ${stat['size']},
-                                    "directory": ${stat.isDirectory()},
-                                    "file": ${stat.isFile()}
+                                    "directory": ${isDirectory},
+                                    "file": ${isFile}
                                   }`
                                 )
                                 iter += 1
@@ -132,7 +137,7 @@ app.get('/rename',(request,response) => {
     const path_splitted = path.split('|')
     fs.rename(path_splitted[0],path_splitted[1],(e)=>{
          if(e){
-             response.send(`{"path": "${path}","content": "${err.toString()}"}`)
+             response.send(`{"path": "${path}","content": "${e.toString()}"}`)
             }
             else{
                 response.send(`{"path":"${path}","content":"success"}`)

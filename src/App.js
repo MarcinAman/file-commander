@@ -15,7 +15,10 @@ export class Element extends Component {
     }
 
     renderName = () => {
-        return this.state.name.toString()
+        if(this.state.type === 'Directory'){
+            return(<div onClick={(e) => this.state.changePath(e,this.state.name)}>{this.state.name.toString()}</div>)
+        }
+        return(<div>{this.state.name.toString()}</div>)
     }
 
     changeChecked(e,state){
@@ -35,7 +38,6 @@ export class Element extends Component {
                 <td>{this.renderName()}</td>
             <td>{this.renderSize()}</td>
             <td>{this.renderType()}</td>
-
             </tr>
         )
     }
@@ -49,9 +51,8 @@ export class File extends Element{
             size: props.content.size,
             type: 'File',
             checked: false,
-            callbackFunction: props.callback
+            callbackFunction: props.isChecked
         }
-
     }
 }
 
@@ -63,7 +64,8 @@ export class Directory extends Element {
             size: props.content.size,
             type: 'Directory',
             checked: false,
-            callbackFunction: props.callback
+            callbackFunction: props.isChecked,
+            changePath: props.changePath
         }
     }
 }
@@ -76,23 +78,57 @@ class Window extends Component {
             url: props.url,
             base_url: props.base_url,
             checked: [],
-            path: props.path
+            path: props.path,
+            returnChecked: props.checked,
+            changeCurrentPath: props.changePath
         };
         this.remove = this.remove.bind(this)
         this.rename = this.rename.bind(this)
         this.isChecked = this.isChecked.bind(this)
         this.changeName = this.changeName.bind(this)
         this.updateStateWithModalName = this.updateStateWithModalName.bind(this)
+        this.changePath = this.changePath.bind(this)
     }
+
+    changePath(event,e){
+        if(e === '..'){
+            const index = this.state.path.lastIndexOf('/')
+            this.setState(
+                (prev) => ({
+                    content: false,
+                    path: prev.path.substring(0,index)
+                }),
+                () => {
+                    // console.log(this.state.base_url+'view?path='+this.state.path)
+                    this.state.changeCurrentPath(this.state.path)
+                    this.componentDidMount()
+                }
+            )
+        }
+        else{
+            this.setState(
+                (prev) => ({
+                    content: false,
+                    path: prev.path+"/"+e
+                }),
+                () => {
+                    // console.log(this.state.base_url+'view?path='+this.state.path)
+                    this.state.changeCurrentPath(this.state.path)
+                    this.componentDidMount()
+                }
+            )
+        }
+    }
+
 
     parseContent(jsonResponse){
         return jsonResponse.content.map(
             (element)=>{
                 if(element['directory']){
-                    return <Directory content={element} callback={this.isChecked}/>
+                    return <Directory content={element} isChecked={this.isChecked} changePath={this.changePath}/>
                 }
                 else{
-                    return <File content={element} callback={this.isChecked}/>
+                    return <File content={element} isChecked={this.isChecked}/>
                 }
             })
     }
@@ -109,10 +145,12 @@ class Window extends Component {
                 (e)=> e.element !==element
             )
         }
+
+        this.state.returnChecked(this.state.checked);
     }
 
     getData(){
-        return fetch(this.state.url)
+        return fetch(this.state.base_url+'view?path='+this.state.path)
             .then( (e) =>{
                 return e.json()
             } )
@@ -139,15 +177,22 @@ class Window extends Component {
     }
 
     remove(){
-        this.state.checked.map(
-            (e) => {
-                console.log(this.fetchRequests(this.state.base_url+'remove?path='+this.state.path+'/'+e.state.name))
-                return e
-            }
-        )
+        //#TODO rendering error
+        this.setState((prev) =>{
+            prev.checked.forEach(
+                (e) =>{
+                    return this.fetchRequests(this.state.base_url+'remove?path='+this.state.path+'/'+e.state.name)
+                        .then(
+                            this.componentDidMount()
+                        )
+                }
+            )
 
-        this.setState({checked:[]})
-        this.componentDidMount()
+            return {
+                checked: []
+            }
+        }
+        )
     }
 
     updateStateWithModalName(event,e){
@@ -193,8 +238,6 @@ class Window extends Component {
     }
 
     rename(){
-        //#TODO a modal with new name
-
         this.setState({
                 renderChecked: true,
                 changedNames: this.state.checked.map(
@@ -221,6 +264,7 @@ class Window extends Component {
             return(
                 <div>
                     <div className = 'fixed-table-header'>{this.state.path}</div>
+                    <div onClick={(e) => this.changePath(e,'..')}>..</div>
                     <div className = 'fixed-table-content'>{this.state.content}</div>
                     <button onClick={this.remove}>Remove</button>
                     <button onClick={this.rename}>Rename</button>
@@ -235,20 +279,84 @@ class Window extends Component {
 }
 
 class App extends Component {
+    constructor(){
+        super()
+
+        this.state = {
+            base_url:'http://localhost:8080/',
+            leftPath: "/home/woolfy",
+            rightPath: "/home/woolfy"
+        }
+
+        this.copy = this.copy.bind(this)
+        this.addChecked = this.addChecked.bind(this)
+        this.changeCurrentPath = this.changeCurrentPath.bind(this)
+    }
+
+    changeCurrentPath(site,e){
+        if(site==='left'){
+            this.setState({leftPath:e})
+        }
+        else{
+            this.setState({rightPath:e})
+        }
+    }
+
+    async fetchRequests(url){
+        console.log(url)
+        return await fetch(url)
+    }
+
+    addChecked(site,e){
+        if(site==='left'){
+            this.setState({checkedLeft:e})
+        }
+        else{
+            this.setState({checkedRight:e})
+        }
+    }
 
     componentDidMount(){
         console.log('parent')
     }
 
+    copy(event){
+        //#TODO doesnt copy from right to left + update
+        let iterable = []
+        let from = ''
+        let to = ''
+
+        if(this.state.checkedLeft!==undefined){
+            iterable = this.state.checkedLeft
+            from = this.state.leftPath
+            to =this.state.rightPath
+        }
+        else{
+            to = this.state.leftPath
+            from = this.state.rightPath
+            iterable = this.state.checkedRight
+        }
+
+        iterable.forEach(
+            (e) => {
+                this.fetchRequests(this.state.base_url+"copy?path="+from+"/"+e.state.name+"|"+to+"/"+e.state.name)
+            }) //magnificent error handling
+    }
+
     render() {
         return (
             <div className = 'windows'>
-                <div className = 'window-left'><Window url="http://localhost:8080/view?path=/home/woolfy"
-                                                       base_url="http://localhost:8080/"
-                                                       path="/home/woolfy"/></div>
-                <div className = 'window-right'><Window url="http://localhost:8080/view?path=/home/woolfy"
-                                                        base_url="http://localhost:8080/"
-                                                        path="/home/woolfy"/></div>
+                <div className = 'window-left'><Window url={this.state.base_url + "view?path="+this.state.leftPath}
+                                                       base_url={this.state.base_url}
+                                                       path={this.state.leftPath}
+                                                        checked={(e) => this.addChecked('left',e)}
+                                                        changePath={(a)=>this.changeCurrentPath('left',a)}/></div>
+                <div className = 'window-right'><Window url={this.state.base_url + "view?path="+this.state.rightPath}
+                                                        base_url={this.state.base_url}
+                                                        path={this.state.leftPath}
+                                                        checked={(e)=>this.addChecked('right',e)}
+                                                        changePath={(a)=>this.changeCurrentPath('left',a)}/></div>
+                <button onClick={this.copy}>Copy</button>
             </div>
         );
   }

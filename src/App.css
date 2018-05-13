@@ -2,6 +2,10 @@
   display: inline-block;
 }
 
+.windows>button{
+  position: relative;
+}
+
 .window-left{
   position: absolute;
   left: 0;
