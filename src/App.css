@@ -1,5 +1,9 @@
 .windows{
-  display: inline-block;
+  font-family: 'Carlito', monospace;
+  font-weight: lighter;
+  display: flex;
+  flex-direction: row-reverse;
+  padding-top: 2%;
 }
 
 .windows>button{
@@ -7,15 +11,13 @@
 }
 
 .window-left{
-  position: absolute;
-  left: 0;
-  top: 0;
+  margin: auto;
+  width: 40%;
 }
 
 .window-right{
-  position: absolute;
-  left: 50%;
-  top: 0;
+  margin: auto;
+  width: 40%;
 }
 
 .content-loader{
@@ -35,4 +37,32 @@
 @keyframes spin {
   0% {transform: rotate(0deg)}
   100% {transform: rotate(360deg)}
+}
+
+.copy-button{
+  position: absolute;
+  left: 50%;
+}
+
+.fixed-table-row>td{
+  padding-left: 30%;
+}
+
+.fixed-table-row>td:nth-of-type(2),
+.fixed-table-row>td:nth-of-type(1)
+{
+  padding-left: 0;
+}
+
+
+.fixed-table-row{
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+.fixed-table{
+  width: 100%;
+  padding: 18px;
+  box-shadow: -2px 10px 91px -5px rgba(0,0,0,0.55);
+  border-radius: 18px;
 }

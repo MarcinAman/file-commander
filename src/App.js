@@ -34,7 +34,7 @@ export class Element extends Component {
     render(){
         return (
             <tr className = 'fixed-table-row'>
-            <td><input type="checkbox" onChange={(a) => this.changeChecked(a,this.state)}/></td>
+            <td className='fixed-table-row-input'><input type="checkbox" onChange={(a) => this.changeChecked(a,this.state)}/></td>
                 <td>{this.renderName()}</td>
             <td>{this.renderSize()}</td>
             <td>{this.renderType()}</td>
@@ -271,7 +271,7 @@ class Window extends Component {
         }
         if(this.state.content){
             return(
-                <div>
+                <div className='fixed-table'>
                     <div className = 'fixed-table-header'>{this.state.path}</div>
                     <div onClick={(e) => this.changePath(e,'..')}>..</div>
                     <div className = 'fixed-table-content'>{this.state.content}</div>
@@ -293,8 +293,8 @@ class App extends Component {
 
         this.state = {
             base_url:'http://localhost:8080/',
-            leftPath: "/home/woolfy",
-            rightPath: "/home/woolfy",
+            leftPath: "/",
+            rightPath: "/",
             refreshComponent: false
         }
 
@@ -363,20 +363,24 @@ class App extends Component {
 
     render() {
         return (
-            <div className = 'windows'>
-                <div className = 'window-left'><Window url={this.state.base_url + "view?path="+this.state.leftPath}
+            <div className='double-frame'>
+
+                <div className = 'windows'>
+
+                    <div className = 'window-left'><Window url={this.state.base_url + "view?path="+this.state.leftPath}
                                                        base_url={this.state.base_url}
                                                        path={this.state.leftPath}
                                                         checked={(e) => this.addChecked('left',e)}
                                                         changePath={(a)=>this.changeCurrentPath('left',a)}
                                                         refreshComp={this.state.refreshComponent}/></div>
-                <div className = 'window-right'><Window url={this.state.base_url + "view?path="+this.state.rightPath}
+                    <div className = 'window-right'><Window url={this.state.base_url + "view?path="+this.state.rightPath}
                                                         base_url={this.state.base_url}
                                                         path={this.state.rightPath}
                                                         checked={(e)=>this.addChecked('right',e)}
                                                         changePath={(a)=>this.changeCurrentPath('right',a)}
                                                         refreshComp={this.state.refreshComponent}/></div>
-                <button onClick={this.copy}>Copy</button>
+                </div>
+                <button className = 'copy-button' onClick={this.copy}>Copy</button>
             </div>
         );
   }
