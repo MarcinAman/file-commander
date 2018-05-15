@@ -331,7 +331,6 @@ class App extends Component {
     }
 
     copy(event){
-        //#TODO update
        if(typeof this.state.checkedLeft !== 'undefined'){
            this.fetchRequests(this.state.base_url+"copy?path="+this.state.leftPath+"/"+
                this.state.checkedLeft[0].state.name+"|"+this.state.rightPath+"/"+this.state.checkedLeft[0].state.name)
